@@ -1,25 +1,27 @@
 const uuid = require('uuid-random')
 const { tmpdir } = require('os')
-const { readFile, writeFile, unlink } = require('fs').promises
+const { readFileSync, writeFileSync, unlinkSync } = require('fs')
 const util = require('util')
 const exec = util.promisify(require('child_process').exec)
 const { getExecutablePath, defaultArgs } = require('@shelf/aws-lambda-libreoffice')
 
 module.exports = async (context, data) => {
+  context.log(data)
   const loBinary = await getExecutablePath()
+  context.log(loBinary)
   const id = uuid()
   const documentFileName = `${tmpdir}/${id}.docx`
   const pdfFileName = `${tmpdir}/${id}.pdf`
   const documentData = Buffer.from(data, 'base64')
 
   try {
-    await writeFile(documentFileName, documentData, 'binary')
+    writeFileSync(documentFileName, documentData, 'binary')
     const { stdout } = await exec(`${loBinary} ${defaultArgs.join(' ')} --convert-to pdf ${documentFileName} --outdir ${tmpdir}`)
     context.log(stdout)
-    const pdf = await readFile(pdfFileName).toString('base64')
-    await unlink(pdfFileName)
+    const pdf = readFileSync(pdfFileName).toString('base64')
+    await unlinkSync(pdfFileName)
     context.log(`Deleted ${pdfFileName}`)
-    await unlink(documentFileName)
+    await unlinkSync(documentFileName)
     context.log(`Deleted ${documentFileName}`)
     return pdf
   } catch (error) {
